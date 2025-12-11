@@ -1,9 +1,9 @@
 pipeline {
     agent any
     environment {
-        // 🔴 REPLACE THIS WITH YOUR ACTUAL DOCKER HUB USERNAME
-        DOCKER_IMAGE = 'jadotuyi/my-web-app'  // Format: your-docker-id/your-image-name
-        DOCKER_CREDENTIALS_ID = 'd19314a5a-c615-404c-9fae-76aebeb9076a'
+        // ⚠️ CHANGE THESE TWO LINES:
+        DOCKER_IMAGE = 'jadotuyi/my-web-app'  // e.g., johndoe123/my-web-app
+        DOCKER_CREDENTIALS_ID = 'jadotuyi'  // Simple name, not a UUID
     }
     stages {
         stage('Checkout') {
@@ -11,9 +11,25 @@ pipeline {
                 checkout scm
             }
         }
+        stage('Verify Docker Setup') {
+            steps {
+                bat '''
+                    echo "Checking Docker installation..."
+                    docker --version || echo "ERROR: Docker not found!"
+                    echo "Checking if Docker daemon is running..."
+                    docker ps
+                '''
+            }
+        }
         stage('Build Docker Image') {
             steps {
                 script {
+                    echo "Building Docker image: ${DOCKER_IMAGE}"
+                    // First, check if we have the necessary files
+                    bat 'dir /b'
+                    bat 'type Dockerfile || echo "ERROR: No Dockerfile found!"'
+                    
+                    // Then build
                     dockerImage = docker.build("${DOCKER_IMAGE}:latest")
                 }
             }
@@ -21,6 +37,7 @@ pipeline {
         stage('Push to Docker Hub') {
             steps {
                 script {
+                    echo "Pushing to Docker Hub with credentials ID: ${DOCKER_CREDENTIALS_ID}"
                     docker.withRegistry('https://index.docker.io/v1/', DOCKER_CREDENTIALS_ID) {
                         dockerImage.push('latest')
                     }
@@ -29,12 +46,33 @@ pipeline {
         }
         stage('Deploy to Local Docker') {
             steps {
-                // ⚠️ Changed from 'sh' to 'bat' for Windows
                 bat '''
-                    docker rm -f my-web-app || echo "Container did not exist, continuing..."
-                    docker run -d --name my-web-app -p 8080:80 jadotuyi/my-web-app:latest
+                    echo "Stopping any existing container..."
+                    docker stop my-web-app 2>nul || echo "No container to stop"
+                    docker rm my-web-app 2>nul || echo "No container to remove"
+                    
+                    echo "Running new container..."
+                    docker run -d --name my-web-app -p 8080:80 YOUR_DOCKERHUB_USERNAME/my-web-app:latest
+                    
+                    echo "Waiting for container to start..."
+                    timeout /t 5 /nobreak > nul
+                    
+                    echo "Checking container status..."
+                    docker ps | findstr "my-web-app"
+                    
+                    echo "Testing application..."
+                    curl http://localhost:8080 || echo "Application not responding yet"
                 '''
             }
+        }
+    }
+    post {
+        always {
+            bat '''
+                echo "=== DEBUG INFO ==="
+                docker ps -a
+                docker images | findstr "my-web-app"
+            '''
         }
     }
 }
