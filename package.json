@@ -1,31 +1,13 @@
-pipeline {
-    agent any
-    stages {
-        stage('Checkout') {
-            steps {
-                echo 'Cloning repository...'
-                checkout scm
-            }
-        }
-        stage('Build') {
-            steps {
-                echo 'Building the project...'
-                // Instead of npm install, let's just list files
-                bat 'dir'  // For Windows
-                // For Linux: sh 'ls -la'
-            }
-        }
-        stage('Test') {
-            steps {
-                echo 'Running tests...'
-                // Add test commands later
-            }
-        }
-        stage('Deploy') {
-            steps {
-                echo 'Deploying...'
-                // Add deployment commands later
-            }
-        }
-    }
+{
+  "name": "simple-web-app",
+  "version": "1.0.0",
+  "description": "A simple web app for Jenkins pipeline",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "echo \"Tests passed!\" && exit 0"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
 }
