@@ -1,14 +1,12 @@
 pipeline {
     agent any
 
-    environment {
-        DOCKER_IMAGE = 'jadotuyi/jenkins'
-        DOCKER_CREDENTIALS_ID = 'docker-hub-credentials'
-    }
-
     stages {
+
         stage('Checkout') {
-            steps { checkout scm }
+            steps {
+                checkout scm
+            }
         }
 
         stage('Build') {
@@ -19,13 +17,17 @@ pipeline {
         }
 
         stage('Test') {
-            steps { echo "Running tests..." }
+            steps {
+                echo "Running tests..."
+            }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    dockerImage = docker.build("${DOCKER_IMAGE}:latest")
+                    echo "Building Docker image..."
+
+                    def app = docker.build("jadotuyi/jenkins-demo")
                 }
             }
         }
@@ -33,8 +35,9 @@ pipeline {
         stage('Push to Docker Hub') {
             steps {
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', DOCKER_CREDENTIALS_ID) {
-                        dockerImage.push('latest')
+                    docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials') {
+                        def app = docker.image("jadotuyi/jenkins-demo")
+                        app.push("latest")
                     }
                 }
             }
@@ -43,10 +46,8 @@ pipeline {
         stage('Deploy to Local Docker Host') {
             steps {
                 script {
-                    bat """
-                    docker rm -f jenkins || true
-                    docker run -d --name jenkins -p 8081:80 ${DOCKER_IMAGE}:latest
-                    """
+                    echo "Deploying container..."
+                    bat 'docker run -d -p 3000:3000 jadotuyi/jenkins-demo'
                 }
             }
         }
